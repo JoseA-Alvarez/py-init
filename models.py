@@ -9,7 +9,7 @@ class User(database.Base):
 
     id = Column(Integer, primary_key=True)
     email = Column(String(128), unique=True, index=True)
-    hashed_password = Column(String(128))
+    hashed_password = Column(String(1280))
     is_active = Column(Boolean, default=True)
 
     items = relationship("Item", back_populates="owner")
