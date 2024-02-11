@@ -11,6 +11,8 @@ class User(database.Base):
     email = Column(String(128), unique=True, index=True)
     hashed_password = Column(String(1280))
     is_active = Column(Boolean, default=True)
+    token = Column(String(1280))
+    refresh_token = Column(String(1280))
 
     items = relationship("Item", back_populates="owner")
 
