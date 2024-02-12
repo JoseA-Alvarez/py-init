@@ -9,11 +9,8 @@ from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 
-
-
 app = FastAPI()
 models.database.Base.metadata.create_all(bind=database.engine)
-
 
 origins = [
     "http://localhost:4200",
@@ -36,7 +33,7 @@ def get_db():
         db.close()
 
 async def get_current_user(token: Annotated[str, Depends(auth.oauth2_scheme)], db: Session = Depends(get_db)):
-    print("GET CURRENT USER ------------------------------------")
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -50,20 +47,16 @@ async def get_current_user(token: Annotated[str, Depends(auth.oauth2_scheme)], d
     try:
         payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
         email: str = payload.get("sub")
-        if auth.is_token_expired(token, auth.SECRET_KEY):
-            raise token_expired_exception
         if email is None:
             raise credentials_exception
         token_data = schemas.TokenData(email=email)
-    except JWTError:
-        print("JWT ERROR ----------------------------")
-        raise credentials_exception
+    except JWTError as error:
+        if "Signature has expired" in str(error):
+            raise token_expired_exception
     user = crud.get_user(db, email=token_data.email)
     if user is None:
         raise credentials_exception
     return user
-
-
 
 
 async def get_current_active_user(
@@ -72,7 +65,6 @@ async def get_current_active_user(
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
-
 
 
 @app.post("/users/", response_model=schemas.User)
@@ -97,8 +89,7 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     return db_user
 
 
-
-@app.post("/token")
+@app.post("/login")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)
 ) -> schemas.Token:
@@ -116,7 +107,6 @@ async def login_for_access_token(
     refresh_token = auth.create_access_token2(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
-    #refresh_token = auth.create_refresh_token(user.email)
 
     user.token = access_token
     user.refresh_token = refresh_token
@@ -125,8 +115,8 @@ async def login_for_access_token(
     return schemas.Token(access_token=access_token, refresh_token=refresh_token)
 
 @app.post("/refresh", response_model=schemas.Token)
-async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
-    payload = jwt.decode(refresh_token, auth.SECRET_KEY_REFRESH, algorithms=[auth.ALGORITHM])
+async def refresh_token(token: schemas.TokenUpdate, db: Session = Depends(get_db)):
+    payload = jwt.decode(token.refresh_token, auth.SECRET_KEY_REFRESH, algorithms=[auth.ALGORITHM])
 
     email: str = payload.get("sub")
     user = crud.get_user_by_email(db, email)
@@ -134,7 +124,6 @@ async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
     if (user is None):
         raise HTTPException(status_code=404, detail="User not found")
     if (auth.is_payload_expired(payload)):
-        print ("Token expired")
         raise HTTPException(status_code=404, detail="Token expired")
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
