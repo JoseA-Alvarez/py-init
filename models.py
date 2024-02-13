@@ -1,8 +1,14 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
 import database
 
+
+# Tabla de asociación
+user_roles = Table('user_roles', database.Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id')),
+    Column('role_id', Integer, ForeignKey('roles.id'))
+)
 
 class User(database.Base):
     __tablename__ = "users"
@@ -14,15 +20,11 @@ class User(database.Base):
     token = Column(String(1280))
     refresh_token = Column(String(1280))
 
-    items = relationship("Item", back_populates="owner")
+    roles = relationship('Role', secondary=user_roles, back_populates='users')
 
-
-class Item(database.Base):
-    __tablename__ = "items"
+class Role(database.Base):
+    __tablename__ = 'roles'
 
     id = Column(Integer, primary_key=True)
-    title = Column(String(128), index=True)
-    description = Column(String(128), index=True)
-    owner_id = Column(Integer, ForeignKey("users.id"))
-
-    owner = relationship("User", back_populates="items")
+    name = Column(String(64), unique=True, nullable=False)
+    users = relationship('User', secondary=user_roles, back_populates='roles')

@@ -1,13 +1,14 @@
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from fastapi.middleware.cors import CORSMiddleware
 
 import crud, models, schemas, auth
 import database
 from typing import Annotated
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError, jwt
+from typing import List
 
 app = FastAPI()
 models.database.Base.metadata.create_all(bind=database.engine)
@@ -32,8 +33,8 @@ def get_db():
     finally:
         db.close()
 
-async def get_current_user(token: Annotated[str, Depends(auth.oauth2_scheme)], db: Session = Depends(get_db)):
-
+async def get_current_user(token: Annotated[str, Depends(auth.oauth2_scheme)], db: Session = Depends(get_db),  required_roles: List[str] = []):
+    ## añadir roles
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -46,6 +47,14 @@ async def get_current_user(token: Annotated[str, Depends(auth.oauth2_scheme)], d
     )
     try:
         payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        if required_roles != []:
+            roles: List[str] = payload.get("roles", [])
+            if not any(role in roles for role in required_roles):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not enough permissions",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
@@ -101,11 +110,14 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    for role in user.roles:
+        print(role.name)
+
     access_token = auth.create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user.email, "roles": [role.name for role in user.roles]}, expires_delta=access_token_expires
     )
     refresh_token = auth.create_access_token2(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user.email, "roles": [role.name for role in user.roles]}, expires_delta=access_token_expires
     )
 
     user.token = access_token

@@ -34,7 +34,7 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 def authenticate_user(fake_db, username: str, password: str):
-    user = crud.get_user_by_email(fake_db, username)
+    user = crud.get_user_and_roles(fake_db, username)
     if not user:    
         return False
     if not verify_password(password, user.hashed_password):
