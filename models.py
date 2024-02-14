@@ -17,8 +17,11 @@ class User(database.Base):
     email = Column(String(128), unique=True, index=True)
     hashed_password = Column(String(1280))
     is_active = Column(Boolean, default=True)
-    token = Column(String(1280))
     refresh_token = Column(String(1280))
+    name = Column(String(128))
+    surname = Column(String(128))
+    other = Column(String(128))
+
 
     roles = relationship('Role', secondary=user_roles, back_populates='users')
 

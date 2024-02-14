@@ -11,6 +11,8 @@ from jose import JWTError, jwt
 from typing import List
 
 app = FastAPI()
+
+
 models.database.Base.metadata.create_all(bind=database.engine)
 
 origins = [
