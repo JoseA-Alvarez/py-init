@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 import models, schemas, auth
 from sqlalchemy.orm import joinedload
 
-def get_user(db: Session, email: str):
-    return db.query(models.User).filter(models.User.email == email).first()
+def get_user(db: Session, id: str):
+    return db.query(models.User).filter(models.User.id == id).first()
 
 def get_user_and_roles(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).options(joinedload(models.User.roles)).first()
@@ -43,3 +43,13 @@ def update_user_tokens(db: Session, user: schemas.User):
     db.refresh(db_user)
     return db_user
 
+
+def update_user(db: Session, user_id: int, user: schemas.UserBase):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user is None:
+        return None
+    for key, value in user.dict().items():
+        setattr(db_user, key, value)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
