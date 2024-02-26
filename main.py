@@ -9,15 +9,18 @@ from typing import Annotated
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from typing import List
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # take environment variables from .env.
+
 
 app = FastAPI()
 
 
 models.database.Base.metadata.create_all(bind=database.engine)
 
-origins = [
-    "http://localhost:4200",
-]
+origins = os.getenv('ORIGINS').split(',')
 
 app.add_middleware(
     CORSMiddleware,
