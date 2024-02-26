@@ -2,7 +2,7 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
-import models, schemas, auth
+import models, schemas, services.auth as auth
 from sqlalchemy.orm import joinedload
 
 def get_user(db: Session, id: str):
