@@ -1,3 +1,5 @@
+from typing import List
+
 from sqlalchemy.orm import Session
 
 import models, schemas, auth
@@ -9,6 +11,9 @@ def get_user(db: Session, id: str):
 def get_user_and_roles(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).options(joinedload(models.User.roles)).first()
 
+def get_user_and_roles_by_id(db: Session, id: str):
+    return db.query(models.User).filter(models.User.id == id).options(joinedload(models.User.roles)).first()
+
 
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
@@ -17,19 +22,16 @@ def get_user_by_email(db: Session, email: str):
 def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
 
+def get_roles(db: Session, role_ids: List[int]):
+    return db.query(models.Role).filter(models.Role.id.in_(role_ids)).all()
 
 def create_user(db: Session, user: schemas.UserCreate):
     fake_hashed_password =  auth.get_password_hash(user.password)
-    db_user = models.User(email=user.email, hashed_password=fake_hashed_password, name=user.name, surname=user.surname, other=user.other)
-
-    rolete = db.query(models.Role).filter(models.Role.name == "admin").first()
-    if rolete is None:
-        rolete = models.Role(name="admin")
-        db.add(rolete)
-        db.commit()
-        db.refresh(rolete)
-
-    db_user.roles.append(rolete) # TODO añadimos admin por defecto 
+    db_user = models.User(roles=[],email=user.email, hashed_password=fake_hashed_password, name=user.name, surname=user.surname, other=user.other)
+    for role in user.roles: 
+        rol = db.query(models.Role).filter(models.Role.name == role).first()
+        if rol:
+            db_user.roles.append(rol)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -49,7 +51,12 @@ def update_user(db: Session, user_id: int, user: schemas.UserBase):
     if db_user is None:
         return None
     for key, value in user.dict().items():
-        setattr(db_user, key, value)
+        if key == "roles":
+            # Obtén los objetos Role correspondientes a los roles
+            roles = db.query(models.Role).filter(models.Role.name.in_(value)).all()
+            setattr(db_user, key, roles)
+        else:
+            setattr(db_user, key, value)
     db.commit()
     db.refresh(db_user)
     return db_user

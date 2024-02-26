@@ -83,12 +83,19 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    return crud.create_user(db=db, user=user)
+    db_user= crud.create_user(db=db, user=user)
+    role_names = [role.name for role in db_user.roles]
+
+    return schemas.User(id=db_user.id, email=db_user.email, name=db_user.name, 
+                        surname=db_user.surname, other=db_user.other, 
+                        is_active=db_user.is_active, 
+                        roles=role_names)
 
 
 
 @app.post("/users/{user_id}", response_model=schemas.User)
 def update_user(user_id: int, user: schemas.UserUpdate, db: Session = Depends(get_db)):
+    print("USER",user.roles)
     db_user = crud.update_user(db, user_id, user)
     return db_user
 
@@ -99,12 +106,22 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), c
 
 
 
-@app.get("/users/{user_id}", response_model=schemas.User)
+@app.get("/users/{user_id}", response_model=schemas.UserCreate)
 def read_user(user_id: int, db: Session = Depends(get_db)):
-    db_user = crud.get_user(db, user_id)
+    db_user = crud.get_user_and_roles_by_id(db, user_id)
+    print("ROLEEEE",db_user.roles)
+    print("TOQUEEUEU EUE U",db_user.roles)
+
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    return db_user
+
+    role_names = [role.name for role in db_user.roles]
+
+
+    return schemas.UserCreate(
+        email=db_user.email, name=db_user.name, surname=db_user.surname, other=db_user.other, password="",
+        roles=role_names
+    )
 
 
 @app.post("/login")
