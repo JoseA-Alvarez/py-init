@@ -80,6 +80,22 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(database.g
     users = users_crud.get_users(db, skip=skip, limit=limit)
     return users
 
+@router.get("/profile", response_model=schemas.UserProfileRead)
+def get_profile(db: Session = Depends(database.get_db), 
+    current_user: schemas.User = Depends(get_current_user)):
+    
+
+    return current_user
+
+@router.post("/profile/{user_id}")
+def update_user_profile(user_id:int, user: schemas.UserProfileWrite, 
+                        db: Session = Depends(database.get_db), 
+                        current_user: schemas.User = Depends(get_current_user)):
+    print("llega")
+    db_user = users_crud.update_user_profile(db, current_user.id, user)
+    db_user.hashed_password = auth.get_password_hash
+    return db_user
+
 
 @router.get("/{user_id}", response_model=schemas.UserCreate)
 def read_user(user_id: int, db: Session = Depends(database.get_db)):

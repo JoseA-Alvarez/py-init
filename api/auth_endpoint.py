@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 
-@router.post("/login")
+@router.post("/login", response_model=schemas.UserUI)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(database.get_db)
 ) -> schemas.Token:
@@ -24,8 +24,8 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
-    for role in user.roles:
-        print(role.name)
+
+    user_roles_string = list(map(lambda role: role.name, user.roles))    
 
     access_token = auth.create_access_token(
         data={"sub": user.email, "roles": [role.name for role in user.roles]}, expires_delta=access_token_expires
@@ -37,8 +37,12 @@ async def login_for_access_token(
     user.token = access_token
     user.refresh_token = refresh_token
 
+    print("MENGUANDO", user.email)
+
     users_crud.update_user_tokens(db, user)
-    return schemas.Token(access_token=access_token, refresh_token=refresh_token)
+    return schemas.UserUI(name=user.name, email=user.email, roles=user_roles_string, 
+                          access_token=access_token, refresh_token=refresh_token)
+
 
 @router.post("/refresh", response_model=schemas.Token)
 async def refresh_token(token: schemas.TokenUpdate, db: Session = Depends(database.get_db)):

@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 import models, schemas, services.auth as auth
 from sqlalchemy.orm import joinedload
 
+
+
+
 def get_user(db: Session, id: str):
     return db.query(models.User).filter(models.User.id == id).first()
 
@@ -14,6 +17,8 @@ def get_user_and_roles(db: Session, email: str):
 def get_user_and_roles_by_id(db: Session, id: str):
     return db.query(models.User).filter(models.User.id == id).options(joinedload(models.User.roles)).first()
 
+def get_user_profile(db: Session, id: str):
+    return db.query(models.User).filter(models.User.id == id).first()
 
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
@@ -57,6 +62,21 @@ def update_user(db: Session, user_id: int, user: schemas.UserBase):
             setattr(db_user, key, roles)
         else:
             setattr(db_user, key, value)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def update_user_profile(db: Session, user_id: int, user: schemas.UserProfileWrite):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user is None:
+        return None
+    if (user.password):
+        db_user.hashed_password = auth.get_password_hash(user.password)
+
+    db_user.name = user.name
+    db_user.surname = user.surname
+    db_user.other = user.other
+
     db.commit()
     db.refresh(db_user)
     return db_user

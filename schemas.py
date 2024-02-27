@@ -6,6 +6,18 @@ class UserBase(BaseModel):
     surname: str
     other: str
 
+class UserProfileRead(BaseModel):
+    name: str
+    email: str
+    surname: str
+    other: str    
+
+class UserProfileWrite(BaseModel):
+    name: str
+    surname: str
+    other: str    
+    password: str
+
 
 class UserCreate(UserBase):
     password: str
@@ -37,4 +49,11 @@ class TokenData(BaseModel):
     email: str | None = None
 
 class TokenUpdate(BaseModel):
+    refresh_token: str
+
+class UserUI(BaseModel):
+    name: str
+    email: str
+    roles: list[str]
+    access_token: str
     refresh_token: str
